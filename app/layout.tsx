@@ -24,7 +24,7 @@ export default function Layout({
   return (
     <html lang="en">
       <body
-        className={`${geistKarla.variable} ${satoshi.variable} font-karla bg-black text-white antialiased`}
+        className={`${geistKarla.variable} ${satoshi.variable} font-karla antialiased`}
       >
         {children}
       </body>
