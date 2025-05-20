@@ -1,0 +1,6 @@
+{
+  "databaseURL": "https://Antonis-Papaioannou-s-workspace-vsgade.eu-central-1.xata.sh/db/papdev_snapcast",
+  "codegen": {
+    "output": "src/xata.ts"
+  }
+}
