@@ -7,6 +7,7 @@ import React from 'react';
 const Page = async ({ searchParams }: SearchParams) => {
   const { query, filter, page } = await searchParams;
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { videos, pagination } = await getAllVideos(
     query,
     filter,
