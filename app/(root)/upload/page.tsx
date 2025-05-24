@@ -3,11 +3,14 @@
 import FileInput from '@/components/FileInput';
 import FormFileld from '@/components/FormFileld';
 import { MAX_THUMBNAIL_SIZE, MAX_VIDEO_SIZE } from '@/constants';
-import { getThumbnailUploadUrl, getVideoUploadUrl, saveVideoDetails } from '@/lib/actions/video';
+import {
+  getThumbnailUploadUrl,
+  getVideoUploadUrl,
+  saveVideoDetails,
+} from '@/lib/actions/video';
 import { useFileInput } from '@/lib/hooks/useFileInput';
 import { useRouter } from 'next/navigation';
 import React, { ChangeEvent, FormEvent, useEffect, useState } from 'react';
-
 
 const uploadFileToBunny = (
   file: File,
@@ -15,9 +18,9 @@ const uploadFileToBunny = (
   accessKey: string
 ): Promise<void> =>
   fetch(uploadUrl, {
-    method: "PUT",
+    method: 'PUT',
     headers: {
-      "Content-Type": file.type,
+      'Content-Type': file.type,
       AccessKey: accessKey,
     },
     body: file,
@@ -26,13 +29,10 @@ const uploadFileToBunny = (
       throw new Error(`Upload failed with status ${response.status}`);
   });
 
-
 const Page = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [videoDuration, setVideoDuration] = useState(0);
   const router = useRouter();
-   
-
 
   const [formData, setFormData] = useState({
     title: '',
@@ -56,62 +56,105 @@ const Page = () => {
     }
   }, [video.duration]);
 
+  useEffect(() => {
+    const checkForRecordedVideo = async () => {
+      try {
+        const stored = sessionStorage.getItem('recordedVideo');
+        if (!stored) {
+          return;
+        }
+        const { url, name, type, duration } = JSON.parse(stored);
+        const blob = await fetch(url).then((response) => response.blob());
+        const file = new File([blob], name, { type, lastModified: Date.now() });
+
+        if (video.inputRef.current) {
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(file);
+          video.inputRef.current.files = dataTransfer.files;
+
+          const event = new Event('change', { bubbles: true });
+          video.inputRef.current.dispatchEvent(event);
+
+          video.handleFileChange({
+            target: { files: dataTransfer.files },
+          } as ChangeEvent<HTMLInputElement>);
+        }
+
+        if (duration) setVideoDuration(duration);
+
+        sessionStorage.removeItem('recordedVideo');
+        URL.revokeObjectURL(url)
+      } catch (error) {
+        console.error('Failed to check for recorded video:', error);
+      }
+    };
+    checkForRecordedVideo();
+  }, [video]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       if (!video.file || !thumbnail.file) {
-        setError("Please select a video and a thumbnail.");
+        setError('Please select a video and a thumbnail.');
         return;
       }
 
-      if(!formData.title || !formData.description) {
-        setError("Please fill in all required fields.");
+      if (!formData.title || !formData.description) {
+        setError('Please fill in all required fields.');
         return;
       }
 
       const {
         videoId,
         uploadUrl: videoUploadUrl,
-        accessKey: videoAccessKey
+        accessKey: videoAccessKey,
       } = await getVideoUploadUrl();
 
-      if (!videoUploadUrl || !videoAccessKey) throw new Error("Failed to get video upload URL.");
+      if (!videoUploadUrl || !videoAccessKey)
+        throw new Error('Failed to get video upload URL.');
 
       await uploadFileToBunny(video.file, videoUploadUrl, videoAccessKey);
 
       const {
         uploadUrl: thumbnailUploadUrl,
         accessKey: thumbnailAccessKey,
-        cdnUrl: thumbnailCdnUrl
+        cdnUrl: thumbnailCdnUrl,
       } = await getThumbnailUploadUrl(videoId);
 
-      if (!thumbnailUploadUrl || !thumbnailAccessKey || !thumbnailCdnUrl) throw new Error("Failed to get thumbnail upload URL.");
+      if (!thumbnailUploadUrl || !thumbnailAccessKey || !thumbnailCdnUrl)
+        throw new Error('Failed to get thumbnail upload URL.');
 
-      await uploadFileToBunny(thumbnail.file, thumbnailUploadUrl, thumbnailAccessKey);
+      await uploadFileToBunny(
+        thumbnail.file,
+        thumbnailUploadUrl,
+        thumbnailAccessKey
+      );
 
       await saveVideoDetails({
         videoId,
         thumbnailUrl: thumbnailCdnUrl,
         ...formData,
         duration: videoDuration,
-      })
+      });
 
-       router.push(`/video/${videoId}`);
-
+      router.push(`/`);
     } catch (error) {
-      console.log("Error submitting form:", error);
+      console.log('Error submitting form:', error);
     } finally {
       setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <div className="wrapper-md upload-page">
       <h1>Upload a video</h1>
       {error && <div className="error-field">{error}</div>}
-      <form className="rounded-20 shadow-10 gap-6 w-full flex flex-col px-5 py-7.5" onSubmit={handleSubmit}>
+      <form
+        className="rounded-20 shadow-10 gap-6 w-full flex flex-col px-5 py-7.5"
+        onSubmit={handleSubmit}
+      >
         <FormFileld
           id="title"
           label="Title"
@@ -161,8 +204,8 @@ const Page = () => {
           ]}
           onChange={handleInputChange}
         />
-        <button type='submit' disabled={isSubmitting} className='submit-button'>
-          {isSubmitting ? 'Uploading...' : 'Upload Video' }
+        <button type="submit" disabled={isSubmitting} className="submit-button">
+          {isSubmitting ? 'Uploading...' : 'Upload Video'}
         </button>
       </form>
     </div>
